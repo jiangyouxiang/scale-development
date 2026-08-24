@@ -1,0 +1,33 @@
+{
+  "construct_name": "Fake construct",
+  "dimensions": [
+    {
+      "name": "自控",
+      "attributes": [
+        "控制",
+        "其他"
+      ]
+    },
+    {
+      "name": "戒断",
+      "attributes": [
+        "戒断",
+        "其他"
+      ]
+    },
+    {
+      "name": "损害",
+      "attributes": [
+        "损害",
+        "其他"
+      ]
+    },
+    {
+      "name": "冲突",
+      "attributes": [
+        "冲突",
+        "其他"
+      ]
+    }
+  ]
+}

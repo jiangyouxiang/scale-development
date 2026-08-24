@@ -1,0 +1,24 @@
+{
+  "construct_name": "学术自我效能感",
+  "definition": "个体对自己完成特定学业任务能力的信念和判断，聚焦能力信念本身，不含对学业价值的评价",
+  "theoretical_framework": "Bandura 社会认知理论",
+  "dimensions": [
+    {
+      "name": "学习能力效能",
+      "description": "对自身学习方法和理解能力的信心",
+      "attributes": ["理解能力", "记忆能力", "应用能力", "自学能力"],
+      "sample_items": ["我有信心理解课堂上老师讲授的内容"]
+    },
+    {
+      "name": "学习行为效能",
+      "description": "对自身坚持与管理学习行为的信心",
+      "attributes": ["坚持性", "时间管理", "抗干扰", "计划执行"],
+      "sample_items": ["即使学习内容很难，我也能坚持学下去"]
+    }
+  ],
+  "response_format": "Likert 5 点",
+  "target_population": "大学生",
+  "item_count_per_dimension": 60,
+  "language": "zh-CN",
+  "reverse_items": { "include": false, "ratio": "0" }
+}

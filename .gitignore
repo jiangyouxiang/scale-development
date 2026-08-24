@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# R
+.Rhistory
+.RData
+.Ruserdata
+*.rds
+
+# Generated outputs and private research artifacts
+outputs/
+figures/
+test_*/
+genie_*/
+*.log
+*.csv
+*.docx
+*.pdf
+.env
+
+# Development backups
+*.bak
+*.bak-*
+
+# Keep anonymous regression fixtures
+!tests/fixtures/
+!tests/fixtures/**
+!tests/fixtures/*.rds
+
+# Keep anonymous documentation fixtures
+!reference/*.docx

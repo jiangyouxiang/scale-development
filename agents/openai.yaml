@@ -1,0 +1,6 @@
+interface:
+  display_name: "Scale Development"
+  short_description: "Develop and validate psychological scales with auditable GENIE workflows"
+  default_prompt: "Use $scale-development to develop or validate a psychological scale with a complete candidate pool, auditable review, and GENIE/local_GENIE reporting."
+policy:
+  allow_implicit_invocation: true

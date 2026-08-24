@@ -1,0 +1,84 @@
+name: test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  python-and-r:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: "4.4"
+      - name: Install Python report dependency
+        run: python -m pip install --upgrade pip -r requirements.txt
+      - name: Install R report dependencies
+        shell: bash
+        run: |
+          Rscript -e 'install.packages(c("jsonlite", "ggplot2"), repos="https://cloud.r-project.org", quiet=TRUE)'
+      - name: Python syntax and unit tests
+        shell: bash
+        env:
+          PYTHONUTF8: "1"
+        run: |
+          python -m compileall -q scripts tests
+          python -m unittest discover -s tests -p 'test_*.py' -v
+      - name: R syntax and smoke test
+        shell: bash
+        run: |
+          Rscript -e 'parse(file="scripts/genie_report.R"); parse(file="scripts/setup_check.R"); cat("R parse OK\n")'
+          Rscript tests/test_genie_report.R
+      - name: Generate and inspect fixture DOCX
+        shell: bash
+        env:
+          PYTHONUTF8: "1"
+        run: |
+          export GENIE_REPORT_DIRECT=1
+          report_dir="${RUNNER_TEMP}/scale-development-report"
+          mkdir -p "$report_dir"
+          Rscript scripts/genie_report.R tests/fixtures/fake_genie_results_raw.rds tests/fixtures/fake_items.csv "$report_dir"
+          python scripts/genie_report_docx.py \
+            --markdown "$report_dir/genie_validation_report.md" \
+            --output "$report_dir/genie_validation_report.docx" \
+            --report-dir "$report_dir" \
+            --require-core-figures
+          test -s "$report_dir/genie_validation_report.docx"
+          python - "$report_dir/genie_validation_report.docx" <<'PY'
+          import sys, zipfile
+          from pathlib import Path
+          path = Path(sys.argv[1])
+          with zipfile.ZipFile(path) as zf:
+              assert zf.testzip() is None
+              media = [n for n in zf.namelist() if n.startswith("word/media/")]
+              assert len(media) >= 4, media
+              xml = zf.read("word/document.xml").decode("utf-8")
+              assert "<U+" not in xml and "&lt;U+" not in xml
+          print(f"DOCX validation OK: {len(media)} embedded images")
+          PY
+      - name: Remove generated Python caches
+        shell: bash
+        run: |
+          python -c "import shutil; from pathlib import Path; [shutil.rmtree(p) for p in Path('.').rglob('__pycache__')]; print('Python caches removed')"
+      - name: Static skill validation
+        shell: bash
+        env:
+          PYTHONUTF8: "1"
+        run: python scripts/validate_skill.py .
+      - name: Codex skill structure validation
+        shell: bash
+        env:
+          PYTHONUTF8: "1"
+        run: |
+          if [ -n "${CODEX_QUICK_VALIDATE:-}" ] && [ -f "$CODEX_QUICK_VALIDATE" ]; then
+            python "$CODEX_QUICK_VALIDATE" .
+          else
+            echo "Codex quick_validate.py is environment-specific; repository validator already ran."
+          fi
