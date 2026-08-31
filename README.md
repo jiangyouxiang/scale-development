@@ -1,5 +1,7 @@
 # scale-development
 
+[简体中文 README](README.zh-CN.md)
+
 `scale-development` is a Codex Skill for literature-informed psychological scale development. It coordinates construct definition, dimension justification, complete candidate-item generation, one fixed content-review/optimization cycle, and AIGENIE/local_GENIE in-silico semantic screening.
 
 > This repository contains a **Codex Skill**, not a standalone Python package, R package, or general-purpose command-line application. The workflow is intended to be executed by Codex with the user-confirmed decision gates preserved.
@@ -11,7 +13,7 @@
 - Preserves the complete candidate pool through content optimization; generation-layer review must not pre-shrink the pool.
 - Runs the complete `generated_items.csv` through `GENIE()` or `local_GENIE()`.
 - Separates type-level diagnostics from the optional overall analysis.
-- Produces reproducible CSV/PNG/Markdown outputs and a formal `genie_validation_report.docx` with embedded figures and appendices.
+- Produces reproducible CSV/PNG/Markdown outputs and a formal `genie_validation_report.docx` with embedded figures, method notes, citation details, warnings, and appendices.
 
 ## Installation in Codex
 
@@ -86,7 +88,7 @@ A completed report run should contain:
 - `genie_validation_report.md` (reproducible intermediate)
 - `genie_validation_report.docx` (formal deliverable)
 
-The report explains initial/final NMI and percentage-point change, UVA redundancy screening, bootEGA stability screening, item reduction, attribute/community correspondence, warnings, reproducibility information, and methodological boundaries. It embeds the core plots and returned network/stability plots when available.
+The report explains the GENIE/local_GENIE method principle, the Russell-Lasalandra, Christensen, and Golino (2026) reference, initial/final NMI and percentage-point change, UVA redundancy screening, bootEGA stability screening, item reduction, attribute/community correspondence, reverse-item risk when applicable, warnings, reproducibility information, and methodological boundaries. It embeds the core plots and returned network/stability plots when available.
 
 ## Methodological boundary
 
@@ -116,3 +118,7 @@ The report structure and interpretation are informed by Russell-Lasalandra, Chri
 ## Privacy and release policy
 
 Do not commit real item banks, student data, API keys, tokens, raw research outputs, personal absolute paths, PDFs, or temporary reports. Use the anonymous fixtures under `tests/fixtures/` for regression tests.
+
+## Reverse-item policy
+
+The skill does not ask about reverse-worded items by default and assumes `reverse_items.include=false`. If a user explicitly requests reverse-worded or reverse-keyed items, Codex should warn that this is outside the source paper's validated candidate-item scope and may cause UVA/EGA method-factor artifacts or run-time issues in embedding-based validation.

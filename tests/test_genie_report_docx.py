@@ -34,7 +34,71 @@ class GenieReportDocxTests(unittest.TestCase):
                 self.assertGreaterEqual(len(media), 4)
                 xml = zf.read("word/document.xml").decode("utf-8")
                 self.assertIn("GENIE", xml)
+                self.assertIn("Russell-Lasalandra", xml)
+                self.assertIn("10.3758/s13428-026-03082-1", xml)
+                self.assertIn("in-silico", xml)
+                self.assertIn("UVA", xml)
+                self.assertIn("EGA", xml)
+                self.assertIn("bootEGA", xml)
                 self.assertNotIn("&lt;U+", xml)
+
+    def test_docx_contains_reverse_item_risk_when_manifest_requests_it(self):
+        if not R.exists():
+            self.skipTest(f"Rscript not found: {R}")
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp)
+            manifest = out / "manifest_reverse.json"
+            manifest.write_text(
+                '{"provider":"local","embedding_model":"BAAI/bge-m3","input_rows":4,"run_overall":true,"uva_cut_off":0.2,"reverse_items":{"include":true,"ratio":"4:1","policy":"explicit_user_requested_high_risk"},"method_reference":{"citation":"Russell-Lasalandra, Christensen, & Golino (2026)","title":"Generative psychometrics via AI-GENIE: Automatic item generation and validation with network-integrated evaluation","journal":"Behavior Research Methods","doi":"10.3758/s13428-026-03082-1"},"skill_version":"0.1.0-rc2"}',
+                encoding="utf-8",
+            )
+            r_script = R_SCRIPT.as_posix()
+            fake_results = (FIXTURES / "fake_genie_results_raw.rds").as_posix()
+            fake_items = (FIXTURES / "fake_items.csv").as_posix()
+            out_dir = out.as_posix()
+            manifest_file = manifest.as_posix()
+            r_code = (
+                "source('" + r_script + "', local=TRUE, encoding='UTF-8'); "
+                "generate_genie_report('" + fake_results + "', "
+                "'" + fake_items + "', "
+                "'" + out_dir + "', "
+                "'" + manifest_file + "', character())"
+            )
+            result = subprocess.run([str(R), "-e", r_code], capture_output=True, text=True, encoding="utf-8")
+            self.assertEqual(result.returncode, 0, result.stderr)
+            md = out / "genie_validation_report.md"
+            docx = out / "genie_validation_report.docx"
+            result = subprocess.run(
+                [sys.executable, str(DOCX_SCRIPT), "--markdown", str(md), "--output", str(docx), "--report-dir", str(out), "--require-core-figures"],
+                capture_output=True, text=True, encoding="utf-8"
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            with zipfile.ZipFile(docx) as zf:
+                xml = zf.read("word/document.xml").decode("utf-8")
+                self.assertIn("反向题高风险提示", xml)
+                self.assertIn("题池包含反向题", xml)
+                self.assertIn("Russell-Lasalandra", xml)
+                self.assertNotIn("&lt;U+", xml)
+
+    def test_docx_uses_neutral_reverse_item_text_by_default(self):
+        if not R.exists():
+            self.skipTest(f"Rscript not found: {R}")
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp)
+            env = os.environ.copy(); env["GENIE_REPORT_DIRECT"] = "1"
+            result = subprocess.run([str(R), str(R_SCRIPT), str(FIXTURES / "fake_genie_results_raw.rds"), str(FIXTURES / "fake_items.csv"), str(out)], env=env, capture_output=True, text=True, encoding="utf-8")
+            self.assertEqual(result.returncode, 0, result.stderr)
+            docx = out / "genie_validation_report.docx"
+            result = subprocess.run(
+                [sys.executable, str(DOCX_SCRIPT), "--markdown", str(out / "genie_validation_report.md"), "--output", str(docx), "--report-dir", str(out), "--require-core-figures"],
+                capture_output=True, text=True, encoding="utf-8"
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            with zipfile.ZipFile(docx) as zf:
+                xml = zf.read("word/document.xml").decode("utf-8")
+                self.assertIn("本次 manifest 未标记包含反向题", xml)
+                self.assertNotIn("本次 manifest 标记包含反向题", xml)
+                self.assertNotIn("反向题高风险提示", xml)
 
     def test_markdown_forward_slash_images_are_embedded(self):
         with tempfile.TemporaryDirectory() as tmp:

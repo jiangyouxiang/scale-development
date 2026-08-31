@@ -31,6 +31,7 @@ U_PLUS_RE = re.compile(r"<U\+[0-9A-Fa-f]{4,6}>")
 IMAGE_RE = re.compile(r"!\[([^\]]*)\]\(([^)]+)\)")
 LINK_RE = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")
 TABLE_SEPARATOR_RE = re.compile(r"^\s*\|?\s*:?-{3,}:?\s*(?:\|\s*:?-{3,}:?\s*)+\|?\s*$")
+CONTROL_RE = re.compile(r"[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]")
 
 CORE_FIGURES = [
     ("nmi_before_after.png", "图 1  NMI 初始值与最终值比较", "柱状图展示各分析层面的 NMI 变化；变化值按百分点解释。"),
@@ -51,7 +52,9 @@ def decode_unicode_escapes(text: str) -> str:
 
 def clean(text: object) -> str:
     value = decode_unicode_escapes("" if text is None else str(text))
-    return value.replace("\\u", "\\u")
+    value = value.replace("\ufeff", "")
+    value = CONTROL_RE.sub("", value)
+    return value
 
 
 def set_cell_shading(cell, fill: str) -> None:

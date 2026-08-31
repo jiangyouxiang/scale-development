@@ -298,7 +298,7 @@ class BuildAigenieCallValidationTests(unittest.TestCase):
             self.assertIn('genie_results_raw.rds', script)
             self.assertIn('generate_genie_report', script)
             self.assertIn('--require-core-figures', script)
-            self.assertIn('genie_final_items.csv', (SKILL_ROOT / 'scripts' / 'genie_report.R').read_text(encoding='ascii'))
+            self.assertIn('genie_final_items.csv', (SKILL_ROOT / 'scripts' / 'genie_report.R').read_text(encoding='utf-8'))
             payload = json.loads(config.read_text(encoding="utf-8"))
             self.assertEqual(payload["genie_input_file"], str(items.resolve()))
             self.assertEqual(payload["genie_input_manifest"], str(manifest.resolve()))
@@ -308,6 +308,50 @@ class BuildAigenieCallValidationTests(unittest.TestCase):
             self.assertEqual(manifest_payload["input_rows"], 1)
             self.assertEqual(manifest_payload["provider"], "local")
             self.assertTrue(manifest_payload["generated_items_is_complete_pool"])
+            self.assertEqual(manifest_payload["reverse_items"]["include"], False)
+            self.assertEqual(manifest_payload["reverse_items"]["policy"], "default_positive_only")
+            self.assertIn("Russell-Lasalandra", manifest_payload["method_reference"]["citation"])
+            self.assertEqual(manifest_payload["method_reference"]["doi"], "10.3758/s13428-026-03082-1")
+            self.assertEqual(manifest_payload["skill_version"], (SKILL_ROOT / "VERSION").read_text(encoding="utf-8").strip())
+
+    def test_manifest_records_explicit_reverse_item_risk(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            construct_path = tmp_path / "construct_reverse.json"
+            construct = json.loads(CONSTRUCT.read_text(encoding="utf-8"))
+            construct["reverse_items"] = {"include": True, "ratio": "4:1"}
+            construct_path.write_text(json.dumps(construct, ensure_ascii=False), encoding="utf-8")
+            items = tmp_path / "items.csv"
+            output = tmp_path / "run_genie.R"
+            config = tmp_path / "validation_config.json"
+            self._write_items(items)
+
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(SCRIPT),
+                    str(construct_path),
+                    str(items),
+                    "-o",
+                    str(output),
+                    "--provider",
+                    "local",
+                    "--embedding-model",
+                    "local-test-model",
+                    "--config-output",
+                    str(config),
+                ],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            manifest_payload = json.loads((tmp_path / "genie_input_manifest.json").read_text(encoding="utf-8"))
+            self.assertEqual(manifest_payload["reverse_items"]["include"], True)
+            self.assertEqual(manifest_payload["reverse_items"]["ratio"], "4:1")
+            self.assertEqual(manifest_payload["reverse_items"]["policy"], "explicit_user_requested_high_risk")
+            self.assertIn("reverse-worded", manifest_payload["method_reference"]["reverse_item_note"])
 
     def test_config_input_path_matches_actual_r_input(self):
         with tempfile.TemporaryDirectory() as tmp:

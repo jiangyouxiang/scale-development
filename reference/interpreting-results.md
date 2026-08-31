@@ -111,7 +111,8 @@ AIGENIE 返回经 in-silico 验证的题池与一系列心理测量指标。本�
 5. **逐层解释**：分别解释 type-level 与 overall。二者是不同分析，不得把 type-level 拼接输出解释为 overall 最终量表。
 6. **删除明细**：`genie_redundant_pairs.csv` 解释 UVA 冗余对；`genie_removed_items.csv` 解释 bootEGA 删除项。
 7. **warnings 分类**：至少分为 `locale`、`encoding`、`dependency`、`computation`、`other`。locale 类 warning 通常说明 Windows R 编码环境，非 locale 类 warning 需要人工复核。
-8. **方法边界**：固定说明这只是文本嵌入层面的 in-silico 语义筛查，不是学生样本信度、EFA/CFA、测量不变性或外部效度。
+8. **方法原理与文献依据**：固定说明 GENIE/local_GENIE 基于 text embedding → sparsification → UVA → EGA → bootEGA，并引用 Russell-Lasalandra, Christensen, & Golino (2026), *Behavior Research Methods*, DOI `10.3758/s13428-026-03082-1`。
+9. **方法边界**：固定说明这只是文本嵌入层面的 in-silico 语义筛查，不是学生样本信度、EFA/CFA、测量不变性或外部效度；若 manifest 标记包含反向题，必须加入高风险提示。
 9. **DOCX 交付检查**：封面、目录域、页眉页脚/页码、核心图表、图题表题、宽表附录、warning 分类与 session info 应在 Word 文档中可读；Markdown 只作为中间产物，不替代 DOCX。
 
 ### NMI 增益的写法
@@ -124,7 +125,7 @@ AIGENIE 返回经 in-silico 验证的题池与一系列心理测量指标。本�
 
 ### 自动风险提示
 
-报告应自动标出以下情形：`final_NMI < .50`、NMI 增益为负、某层最终少于 4 题、删除率过高、attribute/community 热图严重错位、出现非 locale 类 warnings。风险提示不等于流程失败，但意味着必须人工复核。
+报告应自动标出以下情形：`final_NMI < .50`、NMI 增益为负、某层最终少于 4 题、删除率过高、attribute/community 热图严重错位、manifest 标记包含反向题、出现非 locale 类 warnings。风险提示不等于流程失败，但意味着必须人工复核。
 
 ### 中文编码故障排查
 

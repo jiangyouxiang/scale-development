@@ -160,7 +160,7 @@ API key 通过 `Sys.getenv()` 读取，不硬编码。
 
 从本 Skill 生成的 `run_genie.R` 必须执行四段式验证：
 
-1. **输入冻结**：`generated_items.csv` 是唯一输入；`genie_input_manifest.json` 记录绝对路径、行数、type/attribute 分布、SHA-256、provider、embedding model、`run.overall` 和 `uva.cut.off`。
+1. **输入冻结**：`generated_items.csv` 是唯一输入；`genie_input_manifest.json` 记录绝对路径、行数、type/attribute 分布、SHA-256、provider、embedding model、`run.overall`、`uva.cut.off`、`reverse_items`、Skill 版本和方法引用。
 2. **环境与编码预检**：记录 `Sys.getlocale()` 与中文 UTF-8 round-trip；Windows `C` locale 不阻断运行，但在报告中列为 locale/encoding warning。
 3. **运行 GENIE/local_GENIE**：保存 `genie_results_raw.rds`，不得在 R 主脚本中把 type-level 拼接结果直接当作唯一最终结果。
 4. **后处理与报告**：调用 `scripts/genie_report.R`，统一解码 Unicode 转义占位符、导出 CSV/PNG/Markdown；再调用 `scripts/genie_report_docx.py` 生成正式 DOCX，并嵌入图表与附录表。
@@ -182,6 +182,6 @@ Skill 的文件口径固定为：
 
 ## 正式报告交付
 
-`genie_validation_report.md` 是可复现的中间报告；`genie_validation_report.docx` 是正式交付物。DOCX 至少应包含封面、执行摘要、输入与方法、type-level 与 overall 分层结果、NMI/UVA/bootEGA 解释、属性—社区对应关系、核心图表及图注、删除题项与 warning 附录、方法学边界和真实样本验证建议。
+`genie_validation_report.md` 是可复现的中间报告；`genie_validation_report.docx` 是正式交付物。DOCX 至少应包含封面、执行摘要、输入与方法、方法原理与文献依据、type-level 与 overall 分层结果、NMI/UVA/bootEGA 解释、属性—社区对应关系、核心图表及图注、删除题项与 warning 附录、反向题风险提示（如适用）、方法学边界和真实样本验证建议。
 
 当 `run.overall=TRUE` 时，报告必须同时呈现两套口径：type-level 用于诊断各类型的删题与结构变化，overall 用于 primary final pool；二者不能在表格或文字中合并成一个“最终结果”。

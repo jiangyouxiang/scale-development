@@ -234,18 +234,47 @@ md_table <- function(df) {
   paste(c(paste0("| ", hdr, " |"), paste0("| ", sep, " |"), paste0("| ", rows, " |")), collapse = "\n")
 }
 
-risk_flags <- function(metrics, warnings_df, primary_items) {
+reverse_items_enabled <- function(manifest) {
+  reverse <- manifest$reverse_items %||% list()
+  include <- reverse$include %||% FALSE
+  if (is.character(include)) return(tolower(include) %in% c("true", "1", "yes", "y"))
+  isTRUE(include)
+}
+
+reverse_items_summary <- function(manifest) {
+  reverse <- manifest$reverse_items %||% list(include = FALSE, ratio = "0", policy = "default_positive_only")
+  include <- reverse_items_enabled(manifest)
+  ratio <- as.character(reverse$ratio %||% if (include) "unspecified" else "0")
+  policy <- as.character(reverse$policy %||% if (include) "explicit_user_requested_high_risk" else "default_positive_only")
+  paste0("include=", ifelse(include, "true", "false"), "; ratio=", ratio, "; policy=", policy)
+}
+
+method_reference_text <- function(manifest) {
+  ref <- manifest$method_reference %||% list()
+  citation <- as.character(ref$citation %||% "Russell-Lasalandra, Christensen, & Golino (2026)")
+  title <- as.character(ref$title %||% "Generative psychometrics via AI-GENIE: Automatic item generation and validation with network-integrated evaluation")
+  journal <- as.character(ref$journal %||% "Behavior Research Methods")
+  doi <- as.character(ref$doi %||% "10.3758/s13428-026-03082-1")
+  paste0(citation, ". ", title, ". ", journal, ". DOI: ", doi)
+}
+
+reverse_item_risk_text <- function() {
+  paste0("\u26a0\ufe0f **\u53cd\u5411\u9898\u9ad8\u98ce\u9669\u63d0\u793a**\uff1a\u672c\u6b21 manifest \u6807\u8bb0\u5305\u542b\u53cd\u5411\u9898\u3002\u6e90\u8bba\u6587\u6ca1\u6709\u9a8c\u8bc1 AI-GENIE \u751f\u6210\u6216 GENIE \u8bed\u4e49\u7b5b\u67e5\u5728\u53cd\u5411\u9898\u9898\u6c60\u4e2d\u7684\u8868\u73b0\uff1b\u8bba\u6587\u4ec5\u5728\u5916\u90e8 BFI \u5e94\u7b54\u6570\u636e CFA \u4e2d\u8bf4\u660e reverse-keyed items \u5728\u4f30\u8ba1\u524d\u88ab recode\u3002\u53cd\u5411\u9898\u5728\u6587\u672c embedding \u7a7a\u95f4\u4e2d\u53ef\u80fd\u88ab\u89c6\u4e3a\u540c\u4e00\u4e3b\u9898\u7684\u5426\u5b9a\u8868\u8ff0\uff0c\u5bfc\u81f4 UVA \u628a\u6b63/\u53cd\u9898\u5224\u4e3a\u5197\u4f59\u5e76\u5220\u9664\u5176\u4e00\uff0c\u6216\u4f7f EGA \u793e\u533a\u6309\u6b63\u53cd\u63aa\u8f9e\u800c\u975e\u6784\u5ff5\u5185\u5bb9\u5206\u88c2\uff0c\u5f62\u6210\u65b9\u6cd5\u56e0\u5b50\u4f2a\u7ed3\u6784\uff1b\u5728\u67d0\u4e9b provider/local \u6a21\u578b\u6216\u7f16\u7801\u8def\u5f84\u4e2d\u8fd8\u53ef\u80fd\u89e6\u53d1\u989d\u5916\u8fd0\u884c\u5f02\u5e38\u3002\u56e0\u6b64\u5f53\u524d Skill \u4e0d\u5efa\u8bae\u7f16\u5236\u53cd\u5411\u9898\uff1b\u82e5\u7528\u6237\u660e\u786e\u575a\u6301\u4f7f\u7528\uff0c\u5fc5\u987b\u5728\u7ed3\u679c\u89e3\u91ca\u524d\u4eba\u5de5\u590d\u6838\u6b63/\u53cd\u9898\u914d\u5bf9\u3001UVA \u5220\u9664\u8bb0\u5f55\u3001EGA \u793e\u533a\u548c\u6700\u7ec8\u9898\u9879\u8986\u76d6\u3002")
+}
+
+risk_flags <- function(metrics, warnings_df, primary_items, manifest = list()) {
   flags <- character()
-  if (any(metrics$final_NMI_raw < .50, na.rm = TRUE)) flags <- c(flags, "\u81F3\u5C11\u4E00\u4E2A\u5206\u6790\u5C42\u9762\u7684 final_NMI < .50")
-  if (any(metrics$delta_NMI_pp < 0, na.rm = TRUE)) flags <- c(flags, "\u81F3\u5C11\u4E00\u4E2A\u5206\u6790\u5C42\u9762\u7684 NMI \u589E\u76CA\u4E3A\u8D1F")
-  if (any(metrics$final_N < 4, na.rm = TRUE)) flags <- c(flags, "\u81F3\u5C11\u4E00\u4E2A\u5206\u6790\u5C42\u9762\u7684\u6700\u7EC8\u9898\u91CF\u5C11\u4E8E 4 \u9898")
-  if (any(metrics$removed_rate > .50, na.rm = TRUE)) flags <- c(flags, "\u81F3\u5C11\u4E00\u4E2A\u5206\u6790\u5C42\u9762\u7684\u5220\u9664\u7387\u8D85\u8FC7 50%")
+  if (any(metrics$final_NMI_raw < .50, na.rm = TRUE)) flags <- c(flags, "\u81f3\u5c11\u4e00\u4e2a\u5206\u6790\u5c42\u9762\u7684 final_NMI < .50")
+  if (any(metrics$delta_NMI_pp < 0, na.rm = TRUE)) flags <- c(flags, "\u81f3\u5c11\u4e00\u4e2a\u5206\u6790\u5c42\u9762\u7684 NMI \u589e\u76ca\u4e3a\u8d1f")
+  if (any(metrics$final_N < 4, na.rm = TRUE)) flags <- c(flags, "\u81f3\u5c11\u4e00\u4e2a\u5206\u6790\u5c42\u9762\u7684\u6700\u7ec8\u9898\u91cf\u5c11\u4e8e 4 \u9898")
+  if (any(metrics$removed_rate > .50, na.rm = TRUE)) flags <- c(flags, "\u81f3\u5c11\u4e00\u4e2a\u5206\u6790\u5c42\u9762\u7684\u5220\u9664\u7387\u8d85\u8fc7 50%")
+  if (reverse_items_enabled(manifest)) flags <- c(flags, "\u9898\u6c60\u5305\u542b\u53cd\u5411\u9898\uff1a\u8be5\u7528\u6cd5\u8d85\u51fa\u6e90\u8bba\u6587\u9a8c\u8bc1\u8303\u56f4\uff0c\u4e14\u53ef\u80fd\u5f15\u53d1 UVA/EGA \u65b9\u6cd5\u56e0\u5b50\u6216\u8fd0\u884c\u5f02\u5e38\uff0c\u9700\u4eba\u5de5\u590d\u6838")
   if (nrow(primary_items) && all(c("attribute", "EGA_com") %in% names(primary_items))) {
     tab <- table(primary_items$attribute, primary_items$EGA_com)
     purity <- sum(apply(tab, 2, max)) / sum(tab)
-    if (is.finite(purity) && purity < .50) flags <- c(flags, sprintf("attribute/EGA community \u5BF9\u5E94\u7EAF\u5EA6\u504F\u4F4E\uFF08%.1f%%\uFF09", purity * 100))
+    if (is.finite(purity) && purity < .50) flags <- c(flags, sprintf("attribute/EGA community \u5bf9\u5e94\u7eaf\u5ea6\u504f\u4f4e\uff08%.1f%%\uff09", purity * 100))
   }
-  if (nrow(warnings_df) && any(warnings_df$category != "locale")) flags <- c(flags, "\u5B58\u5728\u975E locale \u7C7B warning\uFF0C\u9700\u8981\u4EBA\u5DE5\u590D\u6838")
+  if (nrow(warnings_df) && any(warnings_df$category != "locale")) flags <- c(flags, "\u5b58\u5728\u975e locale \u7c7b warning\uff0c\u9700\u8981\u4eba\u5de5\u590d\u6838")
   unique(flags)
 }
 
@@ -293,9 +322,12 @@ generate_genie_report <- function(raw_results_path, input_file, output_dir = dir
   session_lines <- c("# GENIE session information", paste0("generated_at: ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z")), paste0("R version: ", R.version.string), paste0("Sys.getlocale: ", Sys.getlocale()), paste0("input_file: ", normalizePath(input_file, winslash = "/", mustWork = FALSE)), capture.output(sessionInfo()))
   writeLines(session_lines, file.path(output_dir, "genie_session_info.txt"), useBytes = TRUE)
   figures <- make_figures(metrics, primary_final, raw, output_dir)
-  flags <- risk_flags(metrics, warnings_df, primary_final)
+  flags <- risk_flags(metrics, warnings_df, primary_final, manifest)
   provider <- manifest$provider %||% "unknown"
   model <- manifest$embedding_model %||% "unknown"
+  reverse_summary <- reverse_items_summary(manifest)
+  method_reference <- method_reference_text(manifest)
+  reverse_risk_section <- if (reverse_items_enabled(manifest)) reverse_item_risk_text() else "\u672c\u6b21 manifest \u672a\u6807\u8bb0\u5305\u542b\u53cd\u5411\u9898\uff1b\u672c\u62a5\u544a\u6309\u9ed8\u8ba4\u6b63\u5411\u9898\u6d41\u7a0b\u89e3\u91ca\u3002\u82e5\u5b9e\u9645\u9898\u6c60\u4e2d\u5b58\u5728\u672a\u8bb0\u5f55\u7684\u53cd\u5411\u9898\uff0c\u8bf7\u5148\u4fee\u6b63 manifest \u5e76\u91cd\u65b0\u751f\u6210\u62a5\u544a\u3002"
   input_n <- suppressWarnings(as.integer(manifest$input_rows %||% NA_integer_))
   if (is.na(input_n) || input_n <= 1L) input_n <- count_csv_data_rows(input_file)
   if (!is.null(input) && (is.na(input_n) || nrow(input) > input_n)) input_n <- nrow(input)
@@ -361,10 +393,9 @@ generate_genie_report <- function(raw_results_path, input_file, output_dir = dir
   report_lines <- c(
     "# GENIE / local_GENIE \u8BED\u4E49\u7B5B\u67E5\u5206\u6790\u62A5\u544A", "", "## 1. \u6267\u884C\u6458\u8981", "", summary_line,
     "", "\u672C\u62A5\u544A\u91C7\u7528\u8BBA\u6587\u5F0F\u7ED3\u679C\u62A5\u544A\u53E3\u5F84\uFF0C\u660E\u786E\u533A\u5206\u8F93\u5165\u9898\u6C60\u3001type-level \u8BCA\u65AD\u3001overall \u4E3B\u7ED3\u679C\u4EE5\u53CA warning\u3002\u6240\u6709\u8FDB\u5165 GENIE \u7684\u9898\u9879\u5747\u6765\u81EA\u7528\u6237\u786E\u8BA4\u540E\u7684\u5B8C\u6574\u5019\u9009\u9898\u6C60\uFF1B\u4EFB\u4F55 final items \u90FD\u662F\u9A8C\u8BC1\u8F93\u51FA\uFF0C\u4E0D\u4F1A\u88AB\u91CD\u65B0\u4F5C\u4E3A\u672C\u8F6E\u8F93\u5165\u3002",
-    "", "## 2. \u8F93\u5165\u3001provider \u4E0E\u8FD0\u884C\u914D\u7F6E", "", sprintf("- \u8F93\u5165\u6587\u4EF6\uFF1A`%s`", input_file), sprintf("- \u8F93\u5165\u9898\u6570\uFF1A%s", input_n), sprintf("- provider\uFF1A`%s`", provider), sprintf("- embedding model\uFF1A`%s`", model), sprintf("- run.overall\uFF1A`%s`", ifelse(isTRUE(manifest$run_overall), "TRUE", "FALSE")), sprintf("- UVA cut-off\uFF1A`%s`", manifest$uva_cut_off %||% "unknown"), sprintf("- \u8F93\u5165 SHA-256\uFF1A`%s`", manifest$input_file_sha256 %||% "\u672A\u63D0\u4F9B"),
-    "", "\u8F93\u5165\u51BB\u7ED3\u7684\u542B\u4E49\u662F\uFF1ACSV \u7684\u884C\u6570\u3001ID\u3001\u7EF4\u5EA6\u548C\u5C5E\u6027\u5206\u5E03\u5728\u9A8C\u8BC1\u5F00\u59CB\u524D\u5DF2\u88AB\u8BB0\u5F55\u5230 manifest\uFF1B\u8FD9\u4FDD\u8BC1\u540E\u7EED\u62A5\u544A\u53EF\u4EE5\u8FFD\u6EAF\u5230\u540C\u4E00\u4E2A\u5B8C\u6574\u9898\u6C60\uFF0C\u800C\u4E0D\u662F\u4E8B\u540E\u9009\u51FA\u7684\u7B80\u7248\u3002",
-    "", "## 3. \u65B9\u6CD5\u4E0E\u89E3\u91CA\u6846\u67B6", "", "GENIE/local_GENIE \u5148\u5728\u9898\u9879\u6587\u672C embedding \u7A7A\u95F4\u4E2D\u8FDB\u884C\u7F51\u7EDC\u6784\u5EFA\uFF0C\u518D\u5206\u522B\u4F7F\u7528 UVA \u8BC6\u522B\u9AD8\u5EA6\u76F8\u4F3C\u6216\u5197\u4F59\u9898\u9879\uFF0C\u5E76\u7528 EGA/bootEGA \u68C0\u67E5\u7F51\u7EDC\u793E\u533A\u4E0E\u7A33\u5B9A\u6027\u3002\u62A5\u544A\u4E2D\u7684 `start_N` \u662F\u8BE5\u5C42\u9762\u7684\u8F93\u5165\u9898\u6570\uFF0C`final_N` \u662F\u8BE5\u5C42\u9762\u8FD4\u56DE\u7684\u4FDD\u7559\u9898\u6570\uFF0C`delta_NMI_pp` \u662F NMI \u53D8\u5316\u7684\u767E\u5206\u70B9\u800C\u4E0D\u662F\u6BD4\u4F8B\u3002UVA \u4E0E bootEGA \u7684\u5220\u9664\u6570\u662F\u8BCA\u65AD\u8FC7\u7A0B\u7684\u7EC4\u6210\u90E8\u5206\uFF0C\u4E0D\u80FD\u7B80\u5355\u76F8\u52A0\u89E3\u91CA\u4E3A\u4E24\u4E2A\u5B8C\u5168\u72EC\u7ACB\u7684\u5220\u9664\u96C6\u5408\u3002",
-    "", "## 4. \u6838\u5FC3\u6307\u6807", "", md_table(metrics),
+    "", "## 2. \u8F93\u5165\u3001provider \u4E0E\u8FD0\u884C\u914D\u7F6E", "", sprintf("- \u8F93\u5165\u6587\u4EF6\uFF1A`%s`", input_file), sprintf("- \u8F93\u5165\u9898\u6570\uFF1A%s", input_n), sprintf("- provider\uFF1A`%s`", provider), sprintf("- embedding model\uFF1A`%s`", model), sprintf("- run.overall\uFF1A`%s`", ifelse(isTRUE(manifest$run_overall), "TRUE", "FALSE")), sprintf("- UVA cut-off\uFF1A`%s`", manifest$uva_cut_off %||% "unknown"), sprintf("- \u8f93\u5165 SHA-256\uff1a`%s`", manifest$input_file_sha256 %||% "\u672a\u63d0\u4f9b"), sprintf("- reverse_items\uff1a`%s`", reverse_summary), sprintf("- Skill \u7248\u672c\uff1a`%s`", manifest$skill_version %||% "unknown"),
+    "", "\u8f93\u5165\u51bb\u7ed3\u7684\u542b\u4e49\u662f\uff1aCSV \u7684\u884c\u6570\u3001ID\u3001\u7ef4\u5ea6\u548c\u5c5e\u6027\u5206\u5e03\u5728\u9a8c\u8bc1\u5f00\u59cb\u524d\u5df2\u88ab\u8bb0\u5f55\u5230 manifest\uff1b\u8fd9\u4fdd\u8bc1\u540e\u7eed\u62a5\u544a\u53ef\u4ee5\u8ffd\u6eaf\u5230\u540c\u4e00\u4e2a\u5b8c\u6574\u9898\u6c60\uff0c\u800c\u4e0d\u662f\u4e8b\u540e\u9009\u51fa\u7684\u7b80\u7248\u3002",
+    "", "## 3. \u65b9\u6cd5\u539f\u7406\u4e0e\u6587\u732e\u4f9d\u636e", "", paste0("Method reference: ", method_reference), "", "The GENIE/local_GENIE validation layer performs in-silico semantic screening over text embeddings, then sparsification, UVA, EGA, and bootEGA. This is a content-geometry filter, not a substitute for respondent-based validity evidence.", "", reverse_risk_section, "", paste0("\u672c\u62a5\u544a\u7684\u9a8c\u8bc1\u5c42\u53c2\u8003\uff1a", method_reference, "\u3002\u8be5\u6587\u63d0\u51fa AI-GENIE\uff0c\u7528 LLM \u751f\u6210\u5019\u9009\u9898\u9879\uff0c\u5e76\u4ee5\u6587\u672c\u5d4c\u5165\u548c\u7f51\u7edc\u5fc3\u7406\u6d4b\u91cf\u6d41\u7a0b\u5bf9\u9898\u9879\u8fdb\u884c in-silico \u7b5b\u67e5\u3002\u672c Skill \u53ea\u590d\u7528\u5176\u9a8c\u8bc1\u5c42\u601d\u60f3\u548c GENIE/local_GENIE \u7ba1\u7ebf\uff1b\u751f\u6210\u5c42\u7531 Codex \u7684\u591a\u667a\u80fd\u4f53\u6216\u663e\u5f0f\u89d2\u8272\u6a21\u62df\u6d41\u7a0b\u5b8c\u6210\u3002"), "", "\u65b9\u6cd5\u6d41\u7a0b\u4e3a\uff1a\u5b8c\u6574\u5019\u9009\u9898\u6c60 \u2192 text embedding \u2192 sparsification \u2192 UVA \u2192 EGA \u2192 bootEGA \u2192 type-level / overall \u5206\u5c42\u8f93\u51fa\u3002UVA \u7528\u4e8e\u53d1\u73b0\u6587\u672c\u8bed\u4e49\u4e0a\u7684\u5c40\u90e8\u4f9d\u8d56\u6216\u5197\u4f59\u9898\u9879\uff1bEGA \u7528\u4e8e\u5728\u9898\u9879\u8bed\u4e49\u7f51\u7edc\u4e2d\u8bc6\u522b\u793e\u533a\uff1bbootEGA \u5728\u5d4c\u5165\u6270\u52a8\u4e0b\u8bc4\u4f30\u793e\u533a/\u9898\u9879\u7a33\u5b9a\u6027\uff1bNMI \u7528\u4e8e\u6bd4\u8f83 EGA \u793e\u533a\u4e0e\u9884\u8bbe attribute \u6807\u7b7e\u7684\u4e00\u81f4\u6027\u3002", "", "\u6ce8\u610f\u4e8b\u9879\uff1a\u8fd9\u4e9b\u6307\u6807\u5efa\u7acb\u5728\u9898\u9879\u6587\u672c embedding \u7684\u8bed\u4e49\u76f8\u4f3c\u5ea6\u4e0a\uff0c\u4e0d\u662f\u5b66\u751f\u6216\u88ab\u8bd5\u4f5c\u7b54\u6570\u636e\u7684\u534f\u65b9\u5dee\u7ed3\u6784\u3002\u56e0\u6b64\uff0c\u62a5\u544a\u4e2d\u7684 NMI\u3001UVA\u3001EGA \u4e0e bootEGA \u4e0d\u80fd\u66ff\u4ee3\u771f\u5b9e\u6837\u672c\u4fe1\u5ea6\u3001\u9879\u76ee\u5206\u6790\u3001EFA/CFA\u3001\u6d4b\u91cf\u4e0d\u53d8\u6027\u3001\u53cd\u5e94\u8fc7\u7a0b\u8bc1\u636e\u6216\u5916\u90e8\u6548\u5ea6\u8bc1\u636e\u3002`delta_NMI_pp` \u662f NMI \u53d8\u5316\u7684\u767e\u5206\u70b9\uff0c\u4e0d\u5e94\u8868\u8ff0\u4e3a\u6548\u5ea6\u63d0\u5347\u767e\u5206\u6bd4\u3002", "", "## 4. \u6838\u5fc3\u6307\u6807", "", md_table(metrics),
     "", "## 5. \u56FE\u8868\u4E0E\u56FE\u6CE8", "", "\u56FE 1 \u7528\u4E8E\u6BD4\u8F83\u7B5B\u67E5\u524D\u540E\u7684 NMI\uFF1B\u56FE 2 \u5C55\u793A\u5B8C\u6574\u9898\u6C60\u5230\u6700\u7EC8\u9898\u6C60\u7684\u6570\u91CF\u53D8\u5316\uFF1B\u56FE 3 \u5C55\u793A UVA\u3001bootEGA \u4E0E\u6700\u7EC8\u4FDD\u7559\u9898\u9879\u4E4B\u95F4\u7684\u6D41\u8F6C\uFF1B\u56FE 4 \u68C0\u67E5\u9884\u8BBE\u5C5E\u6027\u4E0E EGA \u793E\u533A\u7684\u5BF9\u5E94\u5173\u7CFB\u3002", "", "![NMI \u524D\u540E\u6BD4\u8F83](figures/nmi_before_after.png)", "", "![\u9898\u91CF\u524A\u51CF\u6BD4\u8F83](figures/item_reduction_by_type.png)", "", "![UVA/bootEGA \u6D41\u7A0B\u56FE](figures/removal_waterfall.png)", "", "![\u9884\u8BBE\u5C5E\u6027 \u00D7 EGA \u793E\u533A\u70ED\u56FE](figures/attribute_community_heatmap.png)", "", "\u989D\u5916\u8BCA\u65AD\u56FE\uFF1A", diagnostic_links,
     "", "## 6. Type-level \u7ED3\u679C", "", type_explanations,
     "", "## 7. Overall \u7ED3\u679C", "", overall_explanation, "", level_difference,

@@ -17,6 +17,34 @@ from pathlib import Path
 DEFAULT_EMBEDDING_MODEL = "text-embedding-3-small"
 PROVIDERS = {"openai", "jina", "huggingface", "local", "precomputed", "skip"}
 PROVIDER_ENV = {"openai": "OPENAI_API_KEY", "jina": "JINA_API_KEY", "huggingface": "HF_TOKEN"}
+METHOD_REFERENCE = {
+    "citation": "Russell-Lasalandra, Christensen, & Golino (2026)",
+    "title": "Generative psychometrics via AI-GENIE: Automatic item generation and validation with network-integrated evaluation",
+    "journal": "Behavior Research Methods",
+    "doi": "10.3758/s13428-026-03082-1",
+    "scope_note": "GENIE/local_GENIE performs text-embedding-based in-silico semantic screening; it does not replace human-sample psychometric validation.",
+    "reverse_item_note": "The source paper did not validate AI-GENIE generation/GENIE screening with reverse-worded candidate items; reverse items are high-risk and not recommended for this skill unless explicitly requested by the user.",
+}
+
+
+def skill_version():
+    version_file = Path(__file__).resolve().parents[1] / "VERSION"
+    try:
+        return version_file.read_text(encoding="utf-8").strip() or "unknown"
+    except OSError:
+        return "unknown"
+
+
+def normalize_reverse_items(construct):
+    raw = construct.get("reverse_items")
+    if not isinstance(raw, dict):
+        return {"include": False, "ratio": "0", "policy": "default_positive_only"}
+    include = bool(raw.get("include", False))
+    return {
+        "include": include,
+        "ratio": str(raw.get("ratio", "unspecified" if include else "0")),
+        "policy": "explicit_user_requested_high_risk" if include else "default_positive_only",
+    }
 
 
 def r_string(value):
@@ -165,6 +193,9 @@ def input_manifest(items_path, construct, config, output_dir):
         "run_overall": config["run_overall"],
         "uva_cut_off": config["uva_cut_off"],
         "generated_items_is_complete_pool": True,
+        "reverse_items": normalize_reverse_items(construct),
+        "method_reference": METHOD_REFERENCE,
+        "skill_version": skill_version(),
         "manifest_created_by": "build_aigenie_call.py",
     }
 
@@ -227,7 +258,7 @@ def build_r(construct, items_csv_path, config, manifest_path):
     lines += [
         "library(AIGENIE)",
         "library(EGAnet)",
-        "source(report_script, local = TRUE)",
+        "source(report_script, local = TRUE, encoding = \"UTF-8\")",
         "run_validation <- function() {",
         "  warnings_seen <- preflight_warnings",
         "  log_con <- file(file.path(output_dir, \"genie_run.log\"), open = \"wt\", encoding = \"UTF-8\")",

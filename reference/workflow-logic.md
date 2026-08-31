@@ -54,10 +54,10 @@ construct_template.json
         └─ C 已有题池仅验证 → 跳过生成层
         │
         ▼
-⛔ 决策门 4：反向题设置
+可选：仅当用户明确要求反向题时提示高风险并记录
         │
         ▼
-⛔ 决策门 5：生成策略确认
+⛔ 决策门 4：生成策略确认
         │
         ▼
 第一轮审查报告
@@ -69,10 +69,10 @@ construct_template.json
 整合者输出完整 generated_items.csv + generation_session_log.md
         │
         ▼
-⛔ 决策门 6：完整题池确认
+⛔ 决策门 5：完整题池确认
         │
         ▼
-⛔ 决策门 7：embedding provider 选择
+⛔ 决策门 6：embedding provider 选择
         │
         ▼
 run_genie.R + validation_config.json + genie_input_manifest.json
@@ -105,31 +105,26 @@ A/B/D 的交付物是学术论文式**维度结构论证报告**：
 
 ### ⛔ 决策门 3 — 生成模式选择
 
-优先弹出选择题：
+优先弹出选择题，且没有用户明确选择前不得进入策略师阶段：
 - 真多智能体协同（推荐）：使用子代理/多代理能力，体现本 Skill 核心。
 - 单智能体角色模拟：显式兜底，只有用户选择后才能使用。
 - 已有题池仅验证：跳过生成层，直接进入 provider 决策与 GENIE。
 
-**不可默认单智能体替代多智能体**。选择结果写入 `generation_session_log.md`。
+**不可默认单智能体替代多智能体**，也不得因用户说“继续”而跳过本门。选择结果写入 `generation_session_log.md`，字段至少包括 `generation_mode`、`subagents_used`、`mode_decision_source`、`fallback_reason`。
 
-### ⛔ 决策门 4 — 反向题设置
+### 反向题风险提示（非日常决策门）
 
-优先弹出选择题：
-- 不包含反向题（推荐，符合原论文验证条件）
-- 包含少量反向题（另问比例）
-- 暂不确定，先全正向生成
+不主动询问是否包含反向题；默认 `reverse_items.include=false` 并全正向生成。只有当用户明确提出反向题、反向计分或 negatively worded items 时，才提示论文未验证该场景、验证层可能出现正/反题冗余删除、方法因子伪结构或运行异常；若用户仍要求，结果写入 `construct_template.json` 的 `reverse_items` 字段和 `generation_session_log.md`。
 
-结果写入 `construct_template.json` 的 `reverse_items` 字段。
-
-### ⛔ 决策门 5 — 生成策略确认
+### ⛔ 决策门 4 — 生成策略确认
 
 策略师产出「题项生成计划」后展示给用户，用户确认后才进入出题阶段。
 
-### ⛔ 决策门 6 — 完整题池确认
+### ⛔ 决策门 5 — 完整题池确认
 
 审查者完成第一轮审查、出题者完成一轮优化、审查者完成复核、整合者完成数量核对后，展示优化后的完整候选题池。用户确认的是完整题池，不是预先筛出的简版；确认后才进入 provider 决策。
 
-### ⛔ 决策门 7 — 嵌入来源选择
+### ⛔ 决策门 6 — 嵌入来源选择
 
 题目确认后必须选择验证嵌入来源，再生成 `validation_config.json` 和 `run_genie.R`。
 
@@ -203,13 +198,13 @@ A/B/D 的交付物是学术论文式**维度结构论证报告**：
 | 第 1→2 步 | 确认后的结构 | 人工/Codex 整理 | `construct_template.json` |
 | 第 3 步 | 基础 R 环境 | `setup_check.R` | 控制台 ✓/✗ |
 | 第 4.0 步 | 用户决策 | 弹出选择题（生成模式） | `generation_session_log.md` 的 `generation_mode` |
-| 第 4.1 步前 | 用户决策 | 弹出选择题（反向题设置） | `construct_template.json` 的 `reverse_items` |
+| 第 4.1 步前 | 用户明确要求反向题时 | 高风险提示并记录，不作为常规弹出门 | `construct_template.json` 的 `reverse_items` 与日志风险说明 |
 | 第 4.1 步 | 构念 JSON | 策略师 | 《题项生成计划》 |
 | 第 4.2 步 | 生成计划 | 出题者 | 题项 JSON |
 | 第 4.3 步 | 完整题项 JSON | 审查者 | 第一轮审查报告 → 出题者一轮优化 → 审查者复核报告 |
 | 第 4.4 步 | 全部产物 | 整合者 | 数量核对 + `generation_session_log.md` + 完整 `generated_items.csv` |
 | 第 5 步 | construct.json + items.csv + provider 决策 | `build_aigenie_call.py` | `run_genie.R` + `validation_config.json` |
-| 第 6 步 | validation_config.json + run_genie.R | `setup_check.R` 后 `Rscript` | `genie_results.rds` + `genie_final_items.csv` + 图 |
+| 第 6 步 | validation_config.json + run_genie.R | `setup_check.R` 后 `Rscript` | `genie_results_raw.rds` + CSV/PNG/Markdown/DOCX 报告 |
 | 第 7 步 | genie_results.rds | 解读 | 用户理解 + 下一步 |
 
 ---
